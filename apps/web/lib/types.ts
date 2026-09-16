@@ -1,0 +1,2 @@
+export type Trace={trace_id:string;agent_name:string;start_time:string;end_time:string;duration_ms:number;status:'success'|'error';total_tokens:number;estimated_cost:string;span_count:number;error_count:number;[key:string]:unknown};export type Span={span_id:string;parent_span_id:string|null;type:string;name:string;start_time:string;end_time:string;duration_ms:number;status:'success'|'error';[key:string]:unknown};
+export type Agent={agent_id:string;name:string;description:string|null;created_at:string};
