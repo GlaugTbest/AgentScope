@@ -23,6 +23,7 @@ class HttpTransport:
         if self.raise_on_error: raise RuntimeError("AgentScope transport failed") from error
     def send_events(self,payload):
         data=json.dumps(payload, allow_nan=False).encode()
+        if len(data) > 2 * 1024 * 1024: raise ValueError('event batch exceeds 2 MiB')
         request=urllib.request.Request(self.events_url,data=data,headers={"Authorization":f"Bearer {self.key}","Content-Type":"application/json"},method="POST")
         with urllib.request.urlopen(request,timeout=2) as response:
             if response.status not in (200,201): raise RuntimeError("AgentScope event transport failed")

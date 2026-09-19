@@ -1,4 +1,9 @@
+import asyncio
+from threading import Event
+from urllib.error import URLError
+
 from agentscope import AgentScope
+from agentscope.events import BackgroundExporter
 
 
 class Transport:
@@ -49,4 +54,58 @@ def test_incremental_events_are_exported_without_changing_trace_batch():
     assert [event["type"] for event in transport.events] == [
         "execution.started", "activity.updated", "span.started", "span.ended", "execution.completed"
     ]
+    scope.shutdown()
+
+
+def test_exporter_retries_retryable_failures_and_exposes_diagnostics():
+    class FlakyTransport:
+        def __init__(self): self.calls = 0; self.events = []
+        def send_events(self, payload):
+            self.calls += 1
+            if self.calls < 3: raise URLError('offline')
+            self.events.extend(payload['events'])
+
+    transport = FlakyTransport()
+    exporter = BackgroundExporter(transport, batch_size=10, max_retries=3, sleeper=lambda _: None)
+    assert exporter.submit({'event_id': 'one'})
+    assert exporter.submit({'event_id': 'two'})
+    assert exporter.flush(timeout=1)
+    assert [item['event_id'] for item in transport.events] == ['one', 'two']
+    assert exporter.diagnostics == {'enqueued': 2, 'exported': 2, 'dropped': 0, 'failed': 0, 'retries': 2, 'pending': 0}
+    assert exporter.shutdown()
+
+
+def test_exporter_drops_when_the_bounded_buffer_is_full():
+    entered, release = Event(), Event()
+
+    class BlockingTransport:
+        def send_events(self, payload):
+            entered.set()
+            release.wait(1)
+
+    exporter = BackgroundExporter(BlockingTransport(), limit=1, batch_size=1)
+    assert exporter.submit({'event_id': 'first'})
+    assert entered.wait(1)
+    assert exporter.submit({'event_id': 'second'})
+    assert not exporter.submit({'event_id': 'dropped'})
+    release.set()
+    assert exporter.flush(timeout=1)
+    assert exporter.diagnostics['dropped'] == 1
+    assert exporter.shutdown()
+
+
+def test_async_contexts_preserve_the_existing_trace_contract():
+    transport = IncrementalTransport()
+    scope = AgentScope(transport=transport)
+
+    async def instrumented_work():
+        async with scope.trace('async-agent') as trace:
+            async with trace.span(type='tool', name='async-search'):
+                await asyncio.sleep(0)
+
+    asyncio.run(instrumented_work())
+    scope.flush()
+    assert transport.payloads[0]['trace']['agent_name'] == 'async-agent'
+    assert transport.payloads[0]['spans'][0]['name'] == 'async-search'
+    assert scope.diagnostics['exported'] == 4
     scope.shutdown()
