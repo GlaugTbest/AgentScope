@@ -31,6 +31,16 @@ def test_terminal_execution_does_not_reopen_from_old_event(client, auth_headers)
     assert client.get("/v1/executions/run-1", headers=auth_headers).json()["execution"]["state"] == "completed"
 
 
+def test_execution_exposes_the_latest_evidence_based_activity(client, auth_headers):
+    started = event("evt-1", "execution.started", "2026-09-18T12:00:00Z")
+    activity = event("evt-2", "activity.updated", "2026-09-18T12:00:01Z")
+    activity["payload"] = {"message": "Consultando documentos", "completed": 2}
+    assert client.post("/v1/events", json={"events": [started, activity]}, headers=auth_headers).status_code == 201
+
+    execution = client.get("/v1/executions", headers=auth_headers).json()["items"][0]
+    assert execution["metadata"]["latest_activity"] == {"message": "Consultando documentos", "completed": 2}
+
+
 def test_event_conflict_is_explicit(client, auth_headers):
     payload = {"events": [event()]}
     client.post("/v1/events", json=payload, headers=auth_headers)

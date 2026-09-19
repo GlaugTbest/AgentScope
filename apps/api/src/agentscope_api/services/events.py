@@ -69,6 +69,8 @@ def _execution(session: Session, event: IncrementalEvent) -> ExecutionModel:
         current.instance_id = event.instance_id or current.instance_id
         current.task_id = event.task_id or current.task_id
         current.state = state
+        if event.type == "activity.updated":
+            current.metadata_ = {**(current.metadata_ or {}), "latest_activity": event.payload}
         if state in TERMINAL:
             current.ended_at = when
     return current
