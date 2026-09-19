@@ -63,6 +63,8 @@ def create_app():
         payload.trace.metadata['scenario'] = scenario
         if scenario == 'error':
             from .schemas import ErrorInfo
+            payload.trace.status = 'error'
+            payload.trace.error = ErrorInfo(type='TimeoutError', message='A execução foi interrompida porque a fonte de documentos excedeu o tempo limite.', stacktrace='demo.retrieve_context: simulated timeout')
             payload.spans[2].status = 'error'
             payload.spans[2].error = ErrorInfo(type='TimeoutError', message='Fonte de documentos excedeu o tempo limite (falha simulada).', stacktrace='demo.retrieve_context: simulated timeout')
             payload.spans[2].output = None

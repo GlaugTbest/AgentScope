@@ -1,1 +1,1 @@
-{"name":"agentscope","private":true,"scripts":{"setup":"node scripts/setup.mjs","dev":"node scripts/dev.mjs","demo":".\\.venv\\Scripts\\python.exe examples/demo-agent/main.py","check":"node scripts/check.mjs","test:e2e":"echo E2E requires running dev services"}}
+{"name":"agentscope","private":true,"scripts":{"setup":"node scripts/setup.mjs","dev":"node scripts/dev.mjs","demo":".\\.venv\\Scripts\\python.exe examples/demo-agent/main.py","check":"node scripts/check.mjs","test:e2e":"npm --prefix apps/web run test:e2e"}}
