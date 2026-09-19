@@ -73,6 +73,32 @@ class IngestBatch(StrictModel):
     spans: list[SpanInput] = Field(max_length=1000)
 
 
+EventType = Literal[
+    "execution.started", "activity.updated", "span.started", "span.ended",
+    "usage.recorded", "execution.completed", "execution.failed", "execution.cancelled",
+]
+
+
+class IncrementalEvent(StrictModel):
+    event_id: str = Field(min_length=1, max_length=200)
+    schema_version: Literal["1.0"] = "1.0"
+    type: EventType
+    source: str = Field(min_length=1, max_length=200)
+    project_id: str = Field(default="local", min_length=1, max_length=200)
+    agent_name: str = Field(min_length=1, max_length=200)
+    execution_id: str = Field(min_length=1, max_length=200)
+    agent_id: str | None = Field(default=None, max_length=200)
+    instance_id: str | None = Field(default=None, max_length=200)
+    task_id: str | None = Field(default=None, max_length=200)
+    occurred_at: datetime
+    payload: dict[str, Any] = Field(default_factory=dict)
+    _timestamp = field_validator("occurred_at")(utc)
+
+
+class EventBatch(StrictModel):
+    events: list[IncrementalEvent] = Field(min_length=1, max_length=1000)
+
+
 class AgentCreate(StrictModel):
     name: str = Field(min_length=1, max_length=200)
     description: str | None = Field(default=None, max_length=500)

@@ -5,7 +5,7 @@ from .context import active_span
 
 class Trace:
     def __init__(self,scope,agent_name,metadata): self.scope=scope; self.agent_name=agent_name; self.metadata=metadata; self.trace_id=str(uuid.uuid4()); self.spans=[]
-    def __enter__(self): self.start=datetime.now(UTC); self.clock=time.monotonic(); return self
+    def __enter__(self): self.start=datetime.now(UTC); self.clock=time.monotonic(); self.scope.emit("execution.started",self,{"metadata":self.metadata}); return self
     def span(self, *, type, name, model=None, provider=None, metadata=None): return Span(self,type,name,model,provider,metadata or {})
     def __exit__(self,typ,value,tb):
         end=self.start+timedelta(seconds=time.monotonic()-self.clock); error=None
@@ -14,4 +14,6 @@ class Trace:
         try: self.scope.transport.send(payload)
         except Exception:
             if not value and self.scope.raise_on_error: raise
+        self.scope.emit("execution.failed" if error else "execution.completed",self,{"error":error} if error else {})
         return False
+    def activity(self,message,**details): self.scope.emit("activity.updated",self,{"message":message,**details})

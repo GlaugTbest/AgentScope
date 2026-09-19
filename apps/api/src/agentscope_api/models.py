@@ -13,6 +13,38 @@ class AgentModel(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
 
 
+class ExecutionModel(Base):
+    __tablename__ = "executions"
+    execution_id: Mapped[str] = mapped_column(String(200), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(200), nullable=False, default="local")
+    agent_id: Mapped[Any] = mapped_column(String(200), nullable=True)
+    agent_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    instance_id: Mapped[Any] = mapped_column(String(200), nullable=True)
+    task_id: Mapped[Any] = mapped_column(String(200), nullable=True)
+    state: Mapped[str] = mapped_column(String(32), nullable=False)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ended_at: Mapped[Any] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_event_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    metadata_: Mapped[Any] = mapped_column("metadata", JSON, default=dict, nullable=False)
+
+
+class ActivityEventModel(Base):
+    __tablename__ = "activity_events"
+    event_id: Mapped[str] = mapped_column(String(200), primary_key=True)
+    execution_id: Mapped[str] = mapped_column(ForeignKey("executions.execution_id"), nullable=False)
+    schema_version: Mapped[str] = mapped_column(String(32), nullable=False)
+    type: Mapped[str] = mapped_column(String(64), nullable=False)
+    source: Mapped[str] = mapped_column(String(200), nullable=False)
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    payload: Mapped[Any] = mapped_column(JSON, default=dict, nullable=False)
+
+
+Index("ix_executions_project_state", ExecutionModel.project_id, ExecutionModel.state)
+Index("ix_executions_agent_last_event", ExecutionModel.agent_name, ExecutionModel.last_event_at)
+Index("ix_activity_events_execution_time", ActivityEventModel.execution_id, ActivityEventModel.occurred_at)
+
+
 class TraceModel(Base):
     __tablename__ = "traces"
     trace_id: Mapped[str] = mapped_column(String(36), primary_key=True)

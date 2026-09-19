@@ -6,6 +6,11 @@ class Transport:
     def send(self, payload): self.payloads.append(payload)
 
 
+class IncrementalTransport(Transport):
+    def __init__(self): super().__init__(); self.events = []
+    def send_events(self, payload): self.events.extend(payload["events"])
+
+
 def test_nested_spans_receive_parent_and_send_when_trace_ends():
     transport = Transport()
     scope = AgentScope(transport=transport, capture_content=True)
@@ -30,3 +35,18 @@ def test_original_exception_is_propagated_and_recorded():
     except ValueError as caught:
         assert caught is error
     assert transport.payloads[0]["spans"][0]["status"] == "error"
+
+
+def test_incremental_events_are_exported_without_changing_trace_batch():
+    transport = IncrementalTransport()
+    scope = AgentScope(transport=transport)
+    with scope.trace("agent") as trace:
+        trace.activity("Consultando documentos", completed=2)
+        with trace.span(type="tool", name="search"):
+            pass
+    scope.flush()
+    assert transport.payloads[0]["trace"]["agent_name"] == "agent"
+    assert [event["type"] for event in transport.events] == [
+        "execution.started", "activity.updated", "span.started", "span.ended", "execution.completed"
+    ]
+    scope.shutdown()

@@ -13,7 +13,8 @@ from .auth import require_key
 from .config import Settings
 from .db import make_engine, session_dependency
 from .models import AgentModel
-from .schemas import AgentCreate, IngestBatch
+from .schemas import AgentCreate, EventBatch, IngestBatch
+from .services.events import EventConflict, get_execution, ingest_events, list_executions
 from .services.ingestion import BatchConflict, BatchInvalid, ingest_batch
 from .services.queries import get_trace, list_traces, summarize_traces
 
@@ -74,6 +75,19 @@ def create_app():
         except BatchInvalid as exc: raise HTTPException(422,str(exc))
         except BatchConflict: raise HTTPException(409,"trace id already exists with different content")
         return JSONResponse({"trace_id":result.trace_id,"span_count":result.span_count,"created":result.created}, status_code=201 if result.created else 200)
+    @app.post("/v1/events", dependencies=protected)
+    def events(batch: EventBatch, db: Session=Depends(session)):
+        try: result = ingest_events(db, batch)
+        except EventConflict: raise HTTPException(409, "event id already exists with different content")
+        return JSONResponse({"accepted": result.accepted, "duplicate": result.duplicate}, status_code=201 if result.accepted else 200)
+    @app.get("/v1/executions", dependencies=protected)
+    def executions(project_id: str = "local", state: str | None = None, db: Session=Depends(session)):
+        return list_executions(db, project_id, state)
+    @app.get("/v1/executions/{execution_id}", dependencies=protected)
+    def execution(execution_id: str, db: Session=Depends(session)):
+        result = get_execution(db, execution_id)
+        if not result: raise HTTPException(404, "execution not found")
+        return result
     @app.get("/v1/traces/summary", dependencies=protected)
     def summary(agent_name:str|None=None,status:Literal['success','error']|None=None,span_type:str|None=None,start_from:datetime|None=None,start_to:datetime|None=None, db:Session=Depends(session)):
         return summarize_traces(db,**filters(agent_name,status,span_type,start_from,start_to))

@@ -8,9 +8,9 @@ class Span:
         self.parent=active_span.get(); self.parent_id=self.parent.span_id if self.parent and self.parent.trace is self.trace else None; self.start=self.trace.start+timedelta(seconds=time.monotonic()-self.trace.clock); self.clock=time.monotonic(); self.token=active_span.set(self)
         if len(self.trace.spans) < 1000: self.trace.spans.append(self)
         else: self.trace.metadata['agentscope.dropped_spans'] = self.trace.metadata.get('agentscope.dropped_spans', 0) + 1
-        return self
+        self.trace.scope.emit("span.started",self.trace,{"span_id":self.span_id,"name":self.name,"span_type":self.type}); return self
     def __exit__(self,typ,value,tb):
-        self.end=self.trace.start+timedelta(seconds=time.monotonic()-self.trace.clock); self.status="error" if value else "success"; self.error={"type":typ.__name__,"message":str(value) or typ.__name__,"stacktrace":"".join(traceback.format_exception(typ,value,tb))} if value else None; active_span.reset(self.token); return False
+        self.end=self.trace.start+timedelta(seconds=time.monotonic()-self.trace.clock); self.status="error" if value else "success"; self.error={"type":typ.__name__,"message":str(value) or typ.__name__,"stacktrace":"".join(traceback.format_exception(typ,value,tb))} if value else None; active_span.reset(self.token); self.trace.scope.emit("span.ended",self.trace,{"span_id":self.span_id,"status":self.status,"error":self.error}); return False
     def set_usage(self, *, input_tokens, output_tokens, estimated_cost): self.input_tokens=input_tokens; self.output_tokens=output_tokens; self.cost=str(estimated_cost)
     def set_metadata(self, metadata): self.metadata.update(metadata)
     def set_input(self,value):
