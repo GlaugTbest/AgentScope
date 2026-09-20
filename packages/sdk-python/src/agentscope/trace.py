@@ -11,7 +11,7 @@ class Trace:
     def __exit__(self,typ,value,tb):
         end=self.start+timedelta(seconds=time.monotonic()-self.clock); error=None
         if value: error={"type":type(value).__name__,"message":str(value) or type(value).__name__,"stacktrace":"".join(traceback.format_exception(typ,value,tb))}
-        payload={"trace":{"trace_id":self.trace_id,"agent_name":self.agent_name,"start_time":self.start.isoformat().replace('+00:00','Z'),"end_time":end.isoformat().replace('+00:00','Z'),"status":"error" if error else "success","metadata":self.metadata,"error":error},"spans":[s.payload() for s in self.spans]}
+        payload={"trace":{"trace_id":self.trace_id,"agent_name":self.agent_name,"start_time":self.start.isoformat().replace('+00:00','Z'),"end_time":end.isoformat().replace('+00:00','Z'),"status":"error" if error else "success","metadata":self.scope.sanitize(self.metadata),"error":self.scope.sanitize(error)},"spans":[s.payload() for s in self.spans]}
         self.scope.emit("execution.failed" if error else "execution.completed",self,{"error":error} if error else {})
         try: self.scope.transport.send(payload)
         except Exception:

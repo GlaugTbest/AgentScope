@@ -109,3 +109,19 @@ def test_async_contexts_preserve_the_existing_trace_contract():
     assert transport.payloads[0]['spans'][0]['name'] == 'async-search'
     assert scope.diagnostics['exported'] == 4
     scope.shutdown()
+
+
+def test_sensitive_content_is_sanitized_before_trace_and_event_export():
+    transport = IncrementalTransport()
+    scope = AgentScope(transport=transport, capture_content=True)
+    with scope.trace('agent', metadata={'token': 'trace-secret'}) as trace:
+        trace.activity('Working', authorization='Bearer secret')
+        with trace.span(type='tool', name='search', metadata={'password': 'hidden'}) as span:
+            span.set_input({'api_key': 'input-secret', 'safe': 'kept'})
+    scope.flush()
+    payload = transport.payloads[0]
+    assert payload['trace']['metadata']['token'] == '[REDACTED]'
+    assert payload['spans'][0]['metadata']['password'] == '[REDACTED]'
+    assert payload['spans'][0]['input'] == {'api_key': '[REDACTED]', 'safe': 'kept'}
+    assert transport.events[1]['payload']['authorization'] == '[REDACTED]'
+    scope.shutdown()
