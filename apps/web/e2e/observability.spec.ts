@@ -4,6 +4,12 @@ test('creates and inspects successful and failed executions', async ({ page }) =
   const agentName = `e2e-agent-${Date.now()}`;
 
   await page.goto('/');
+  const themeToggle = page.locator('.theme-toggle');
+  if (await themeToggle.getAttribute('aria-label') === 'Ativar tema claro') await themeToggle.click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await page.getByRole('button', { name: 'Ativar tema escuro' }).click();
   await page.locator('#agent-name').fill(agentName);
   await page.getByRole('button', { name: 'Cadastrar agente' }).click();
   await expect(page.getByRole('heading', { name: agentName })).toBeVisible();
