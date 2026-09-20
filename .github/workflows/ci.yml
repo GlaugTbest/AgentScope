@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v22
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install web dependencies
+        run: npm ci --prefix apps/web
+      - name: Install Python dependencies
+        run: |
+          python -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip
+          .venv/bin/python -m pip install -e 'apps/api[dev]' -e packages/sdk-python
+      - name: Validate migrations
+        env:
+          AGENTSCOPE_DATABASE_URL: sqlite:///./data/agentscope-ci.db
+          AGENTSCOPE_API_KEY: ci
+        run: |
+          mkdir -p data
+          .venv/bin/python -m alembic -c alembic.ini upgrade head
+        working-directory: apps/api
+      - name: Quality checks
+        run: npm run check
+      - name: Install browser for E2E
+        run: npx --prefix apps/web playwright install --with-deps chromium
+      - name: Browser E2E
+        run: npm run test:e2e
