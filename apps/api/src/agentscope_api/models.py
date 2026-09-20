@@ -13,6 +13,14 @@ class AgentModel(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
 
 
+class ProjectModel(Base):
+    __tablename__ = "projects"
+    project_id: Mapped[str] = mapped_column(String(200), primary_key=True)
+    name: Mapped[str] = mapped_column(String(200), unique=True, nullable=False)
+    description: Mapped[Any] = mapped_column(String(500), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+
+
 class ExecutionModel(Base):
     __tablename__ = "executions"
     execution_id: Mapped[str] = mapped_column(String(200), primary_key=True)

@@ -12,8 +12,8 @@ from sqlalchemy.orm import Session, sessionmaker
 from .auth import require_key
 from .config import Settings
 from .db import make_engine, session_dependency
-from .models import AgentModel
-from .schemas import AgentCreate, EventBatch, IngestBatch
+from .models import AgentModel, ProjectModel
+from .schemas import AgentCreate, EventBatch, IngestBatch, ProjectCreate
 from .services.events import EventConflict, get_execution, ingest_events, list_executions
 from .services.ingestion import BatchConflict, BatchInvalid, ingest_batch
 from .services.queries import get_trace, list_traces, summarize_traces
@@ -31,6 +31,18 @@ def create_app():
         try: db.execute(text("SELECT 1")); return {"status":"ok"}
         except Exception: raise HTTPException(503,"database unavailable")
     protected=[Depends(require_key(settings))]
+    @app.get("/v1/projects", dependencies=protected)
+    def projects(db: Session=Depends(session)):
+        items = db.query(ProjectModel).order_by(ProjectModel.created_at.desc()).all()
+        return {"items": [{"project_id": item.project_id, "name": item.name, "description": item.description, "created_at": item.created_at.isoformat()} for item in items]}
+    @app.post("/v1/projects", dependencies=protected)
+    def create_project(project: ProjectCreate, db: Session=Depends(session)):
+        item = ProjectModel(project_id=project.project_id, name=project.name.strip(), description=project.description)
+        db.add(item)
+        try: db.commit()
+        except IntegrityError:
+            db.rollback(); raise HTTPException(409, "project id or name already exists")
+        return JSONResponse({"project_id": item.project_id, "name": item.name, "description": item.description, "created_at": item.created_at.isoformat()}, status_code=201)
     @app.get("/v1/agents", dependencies=protected)
     def agents(db: Session=Depends(session)):
         items = db.query(AgentModel).order_by(AgentModel.created_at.desc()).all()
