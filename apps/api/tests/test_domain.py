@@ -11,3 +11,17 @@ def test_versions_instances_and_tasks_are_project_scoped_and_paginated(client, a
     page = client.get('/v1/tasks?project_id=p1&limit=1&offset=1', headers=auth_headers).json()
     assert page['total'] == 2
     assert len(page['items']) == 1
+
+
+def test_delegations_link_executions_and_are_paginated(client, auth_headers):
+    events = [
+        {'event_id': 'source-start', 'type': 'execution.started', 'source': 'test', 'agent_name': 'coordinator', 'execution_id': 'source', 'occurred_at': '2026-09-16T12:00:00Z'},
+        {'event_id': 'target-start', 'type': 'execution.started', 'source': 'test', 'agent_name': 'researcher', 'execution_id': 'target', 'occurred_at': '2026-09-16T12:00:01Z'},
+    ]
+    assert client.post('/v1/events', headers=auth_headers, json={'events': events}).status_code == 201
+    created = client.post('/v1/delegations', headers=auth_headers, json={'delegation_id': 'delegate-1', 'source_execution_id': 'source', 'target_execution_id': 'target', 'occurred_at': '2026-09-16T12:00:02Z', 'metadata': {'reason': 'research'}})
+    assert created.status_code == 201
+    page = client.get('/v1/delegations?limit=1&offset=0', headers=auth_headers).json()
+    assert page['total'] == 1
+    assert page['items'][0]['source_execution_id'] == 'source'
+    assert page['items'][0]['metadata']['reason'] == 'research'

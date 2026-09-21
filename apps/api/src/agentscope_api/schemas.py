@@ -137,3 +137,13 @@ class TaskCreate(StrictModel):
     project_id: str = Field(min_length=1, max_length=200)
     title: str = Field(min_length=1, max_length=500)
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class DelegationCreate(StrictModel):
+    delegation_id: str = Field(min_length=1, max_length=200)
+    source_execution_id: str = Field(min_length=1, max_length=200)
+    target_execution_id: str = Field(min_length=1, max_length=200)
+    task_id: str | None = Field(default=None, max_length=200)
+    occurred_at: datetime
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    _timestamp = field_validator("occurred_at")(utc)

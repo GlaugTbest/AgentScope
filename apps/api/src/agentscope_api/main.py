@@ -12,8 +12,8 @@ from sqlalchemy.orm import Session, sessionmaker
 from .auth import require_key
 from .config import Settings
 from .db import make_engine, session_dependency
-from .models import AgentModel, AgentVersionModel, InstanceModel, ProjectModel, TaskModel
-from .schemas import AgentCreate, AgentVersionCreate, EventBatch, IngestBatch, InstanceCreate, ProjectCreate, TaskCreate
+from .models import AgentModel, AgentVersionModel, DelegationModel, InstanceModel, ProjectModel, TaskModel
+from .schemas import AgentCreate, AgentVersionCreate, DelegationCreate, EventBatch, IngestBatch, InstanceCreate, ProjectCreate, TaskCreate
 from .services.events import EventConflict, get_execution, ingest_events, list_executions
 from .services.ingestion import BatchConflict, BatchInvalid, ingest_batch
 from .services.otlp import batches as otlp_batches
@@ -76,6 +76,20 @@ def create_app():
         try: db.commit()
         except IntegrityError: db.rollback(); raise HTTPException(409, "task id or project is invalid")
         return JSONResponse({"task_id": item.task_id, "project_id": item.project_id, "title": item.title, "state": item.state, "metadata": item.metadata_}, status_code=201)
+    @app.get("/v1/delegations", dependencies=protected)
+    def delegations(task_id: str | None = None, limit: int = 25, offset: int = 0, db: Session = Depends(session)):
+        if not 1 <= limit <= 100 or offset < 0: raise HTTPException(422, "invalid pagination")
+        query = db.query(DelegationModel)
+        if task_id: query = query.filter(DelegationModel.task_id == task_id)
+        query = query.order_by(DelegationModel.occurred_at.desc())
+        return {"items": [{"delegation_id": item.delegation_id, "task_id": item.task_id, "source_execution_id": item.source_execution_id, "target_execution_id": item.target_execution_id, "occurred_at": item.occurred_at.isoformat() + "Z", "metadata": item.metadata_} for item in query.limit(limit).offset(offset)], "total": query.count(), "limit": limit, "offset": offset}
+    @app.post("/v1/delegations", dependencies=protected)
+    def create_delegation(delegation: DelegationCreate, db: Session = Depends(session)):
+        item = DelegationModel(delegation_id=delegation.delegation_id, task_id=delegation.task_id, source_execution_id=delegation.source_execution_id, target_execution_id=delegation.target_execution_id, occurred_at=delegation.occurred_at.replace(tzinfo=None), metadata_=delegation.metadata)
+        db.add(item)
+        try: db.commit()
+        except IntegrityError: db.rollback(); raise HTTPException(409, "delegation id, task, or execution is invalid")
+        return JSONResponse({"delegation_id": item.delegation_id, "task_id": item.task_id, "source_execution_id": item.source_execution_id, "target_execution_id": item.target_execution_id, "occurred_at": item.occurred_at.isoformat() + "Z", "metadata": item.metadata_}, status_code=201)
     @app.get("/v1/agents", dependencies=protected)
     def agents(db: Session=Depends(session)):
         items = db.query(AgentModel).order_by(AgentModel.created_at.desc()).all()
