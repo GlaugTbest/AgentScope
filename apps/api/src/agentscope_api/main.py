@@ -133,18 +133,23 @@ def create_app():
     @app.get("/v1/agents", dependencies=protected)
     def agents(db: Session=Depends(session)):
         items = db.query(AgentModel).order_by(AgentModel.created_at.desc()).all()
-        return {"items": [{"agent_id": item.agent_id, "name": item.name, "description": item.description, "created_at": item.created_at} for item in items]}
+        return {"items": [{"agent_id": item.agent_id, "name": item.name, "description": item.description, "registration_source": item.registration_source, "last_seen_at": item.last_seen_at.isoformat() if item.last_seen_at else None, "created_at": item.created_at.isoformat()} for item in items]}
     @app.post("/v1/agents", dependencies=protected)
     def create_agent(agent: AgentCreate, db: Session=Depends(session)):
         existing = db.query(AgentModel).filter(AgentModel.name == agent.name).first()
-        if existing: raise HTTPException(409, "agent name already exists")
-        item = AgentModel(agent_id=str(uuid4()), name=agent.name, description=agent.description)
+        if existing and existing.registration_source != "discovered": raise HTTPException(409, "agent name already exists")
+        if existing:
+            existing.description = agent.description
+            existing.registration_source = "manual"
+            db.commit(); db.refresh(existing)
+            return JSONResponse({"agent_id": existing.agent_id, "name": existing.name, "description": existing.description, "registration_source": existing.registration_source, "last_seen_at": existing.last_seen_at.isoformat() if existing.last_seen_at else None, "created_at": existing.created_at.isoformat()}, status_code=200)
+        item = AgentModel(agent_id=str(uuid4()), name=agent.name, description=agent.description, registration_source="manual")
         db.add(item)
         try: db.commit()
         except IntegrityError:
             db.rollback(); raise HTTPException(409, "agent name already exists")
         db.refresh(item)
-        return JSONResponse({"agent_id": item.agent_id, "name": item.name, "description": item.description, "created_at": item.created_at.isoformat()}, status_code=201)
+        return JSONResponse({"agent_id": item.agent_id, "name": item.name, "description": item.description, "registration_source": item.registration_source, "last_seen_at": item.last_seen_at.isoformat() if item.last_seen_at else None, "created_at": item.created_at.isoformat()}, status_code=201)
     @app.post("/v1/agents/{agent_id}/demo", dependencies=protected)
     def demo_agent(agent_id: str, scenario: Literal['success', 'error'] = 'success', db: Session=Depends(session)):
         agent = db.get(AgentModel, agent_id)

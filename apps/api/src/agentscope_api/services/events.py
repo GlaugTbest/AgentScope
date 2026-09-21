@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from ..models import ActivityEventModel, ExecutionModel
 from ..schemas import EventBatch, IncrementalEvent
+from .agents import ensure_agent
 
 
 TERMINAL = {"completed", "failed", "cancelled"}
@@ -87,6 +88,7 @@ def ingest_events(session: Session, batch: EventBatch) -> EventIngestResult:
                         raise EventConflict(event.event_id)
                     duplicate += 1
                     continue
+                ensure_agent(session, event.agent_name, _time(event))
                 _execution(session, event)
                 session.flush()
                 session.add(ActivityEventModel(

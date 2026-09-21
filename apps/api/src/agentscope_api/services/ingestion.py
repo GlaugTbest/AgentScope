@@ -2,9 +2,9 @@ from dataclasses import dataclass
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
-from ..models import AgentModel, SpanModel, TraceModel
-from uuid import uuid5, NAMESPACE_URL
+from ..models import SpanModel, TraceModel
 from ..schemas import IngestBatch, to_nano
+from .agents import ensure_agent
 
 @dataclass(frozen=True)
 class IngestResult:
@@ -67,9 +67,8 @@ def ingest_batch(session: Session, batch: IngestBatch) -> IngestResult:
     try:
         with session.begin():
             trace = batch.trace
-            if not session.scalar(select(AgentModel).where(AgentModel.name == trace.agent_name)):
-                session.add(AgentModel(agent_id=str(uuid5(NAMESPACE_URL, 'agentscope:' + trace.agent_name)), name=trace.agent_name, description='Identificado automaticamente pela ingestão'))
-                session.flush()
+            ensure_agent(session, trace.agent_name, trace.end_time.replace(tzinfo=None))
+            session.flush()
             session.add(TraceModel(trace_id=trace_id, agent_name=trace.agent_name, start_time=trace.start_time, end_time=trace.end_time, duration_ms=round((trace.end_time-trace.start_time).total_seconds()*1000), status=status, metadata_=trace.metadata, error=trace.error.model_dump() if trace.error else None))
             session.flush()
             for span in ordered:

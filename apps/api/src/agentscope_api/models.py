@@ -10,6 +10,8 @@ class AgentModel(Base):
     agent_id: Mapped[str] = mapped_column(String(36), primary_key=True)
     name: Mapped[str] = mapped_column(String(200), unique=True, nullable=False)
     description: Mapped[Any] = mapped_column(String(500), nullable=True)
+    registration_source: Mapped[str] = mapped_column(String(16), default="manual", nullable=False)
+    last_seen_at: Mapped[Any] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
 
 

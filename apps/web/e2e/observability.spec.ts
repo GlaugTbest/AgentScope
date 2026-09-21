@@ -4,6 +4,10 @@ test('creates and inspects successful and failed executions', async ({ page }) =
   const agentName = `e2e-agent-${Date.now()}`;
 
   await page.goto('/');
+  await page.getByRole('button', { name: 'Como conectar um agente' }).click();
+  await expect(page.getByRole('heading', { name: 'Como conectar um agente' })).toBeVisible();
+  await expect(page.locator('.onboarding-code')).toContainText('research-agent');
+  await page.getByRole('button', { name: 'Fechar' }).click();
   const themeToggle = page.locator('.theme-toggle');
   if (await themeToggle.getAttribute('aria-label') === 'Ativar tema claro') await themeToggle.click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
@@ -37,6 +41,10 @@ test('creates and inspects successful and failed executions', async ({ page }) =
   await completedTrace.click();
   await expect(page.getByRole('heading', { name: 'Timeline' })).toBeVisible();
   await expect(page.getByText('success', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'O que foi feito' })).toBeVisible();
+  const capturedResults = page.getByText('Conteúdo sintético para teste', { exact: true });
+  await expect(capturedResults).toHaveCount(4);
+  await expect(capturedResults.first()).toBeVisible();
 
   const failedDemo = await page.request.post(`/api/agents/${agent.agent_id}/demo?scenario=error`);
   expect(failedDemo.ok()).toBeTruthy();
