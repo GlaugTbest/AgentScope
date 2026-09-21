@@ -30,3 +30,7 @@ with scope.trace('my-agent') as trace:
 ## Aplicações de referência
 
 Há três aplicações locais executáveis: RAG, colaboração entre pesquisador/redator/revisor e análise de dados SQLite. Veja [o guia dos exemplos](examples/reference-apps/README.md) e execute `npm run demo:rag`, `npm run demo:collaboration` ou `npm run demo:data` após iniciar o produto e o Ollama local.
+
+## Integrações
+
+O SDK inclui um observador opcional para `LangGraph` e um cliente compatível com OpenAI deliberadamente limitado ao Ollama em loopback. O [guia de integração](examples/integrations/README.md) mostra a instalação e um grafo executável.

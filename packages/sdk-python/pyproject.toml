@@ -7,5 +7,8 @@ name = "agentscope-observability"
 version = "0.1.0"
 requires-python = ">=3.11"
 
+[project.optional-dependencies]
+integrations = ["langgraph>=0.2,<2", "openai>=1.0,<3"]
+
 [tool.setuptools.packages.find]
 where = ["src"]

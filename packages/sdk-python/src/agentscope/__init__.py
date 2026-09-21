@@ -1,2 +1,3 @@
 from .client import AgentScope
-__all__ = ["AgentScope"]
+from .integrations import LangGraphObserver, local_ollama_openai_client
+__all__ = ["AgentScope", "LangGraphObserver", "local_ollama_openai_client"]
