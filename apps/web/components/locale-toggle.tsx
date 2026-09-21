@@ -22,5 +22,5 @@ export function LocaleToggle() {
     window.localStorage.setItem(key, next); document.documentElement.lang = next;
     window.dispatchEvent(new Event('agentscope:locale'));
   }
-  return <button className="theme-toggle" type="button" onClick={toggle} aria-label={locale === 'pt-BR' ? 'Switch to English' : 'Mudar para português'}>{locale === 'pt-BR' ? 'English' : 'Português'}</button>;
+  return <button className="locale-toggle" type="button" onClick={toggle} aria-label={locale === 'pt-BR' ? 'Switch to English' : 'Mudar para português'}>{locale === 'pt-BR' ? 'English' : 'Português'}</button>;
 }
