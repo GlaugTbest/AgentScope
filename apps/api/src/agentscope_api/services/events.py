@@ -113,13 +113,14 @@ def list_executions(session: Session, project_id: str = "local", state: str | No
     return {"items": [_execution_response(item) for item in items]}
 
 
-def get_execution(session: Session, execution_id: str):
+def get_execution(session: Session, execution_id: str, limit: int = 100, offset: int = 0):
     item = session.get(ExecutionModel, execution_id)
     if not item:
         return None
-    events = session.query(ActivityEventModel).filter(
+    query = session.query(ActivityEventModel).filter(
         ActivityEventModel.execution_id == execution_id
-    ).order_by(ActivityEventModel.occurred_at, ActivityEventModel.event_id).all()
+    ).order_by(ActivityEventModel.occurred_at, ActivityEventModel.event_id)
+    events = query.limit(limit).offset(offset).all()
     return {
         "execution": _execution_response(item),
         "events": [{
@@ -127,6 +128,7 @@ def get_execution(session: Session, execution_id: str):
             "occurred_at": event.occurred_at.isoformat() + "Z", "received_at": event.received_at.isoformat() + "Z",
             "payload": event.payload,
         } for event in events],
+        "event_total": query.count(), "event_limit": limit, "event_offset": offset,
     }
 
 

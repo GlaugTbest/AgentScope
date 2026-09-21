@@ -152,8 +152,9 @@ def create_app():
     def executions(project_id: str = "local", state: str | None = None, db: Session=Depends(session)):
         return list_executions(db, project_id, state)
     @app.get("/v1/executions/{execution_id}", dependencies=protected)
-    def execution(execution_id: str, db: Session=Depends(session)):
-        result = get_execution(db, execution_id)
+    def execution(execution_id: str, limit: int = 100, offset: int = 0, db: Session=Depends(session)):
+        if not 1 <= limit <= 100 or offset < 0: raise HTTPException(422, "invalid pagination")
+        result = get_execution(db, execution_id, limit, offset)
         if not result: raise HTTPException(404, "execution not found")
         return result
     @app.get("/v1/traces/summary", dependencies=protected)
