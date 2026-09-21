@@ -1,0 +1,30 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: agentscope
+      POSTGRES_USER: agentscope
+      POSTGRES_PASSWORD: agentscope-local
+    ports:
+      - "5432:5432"
+    volumes:
+      - agentscope-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agentscope -d agentscope"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      AGENTSCOPE_API_KEY: dev
+      AGENTSCOPE_DATABASE_URL: postgresql+psycopg://agentscope:agentscope-local@postgres:5432/agentscope
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+volumes:
+  agentscope-postgres:

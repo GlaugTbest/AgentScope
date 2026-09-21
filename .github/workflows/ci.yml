@@ -23,7 +23,9 @@ jobs:
         with:
           python-version: '3.13'
       - name: Install web dependencies
-        run: npm ci --prefix apps/web
+        run: |
+          npm ci --prefix apps/web
+          npm ci --prefix packages/sdk-typescript
       - name: Install Python dependencies
         run: |
           python -m venv .venv
