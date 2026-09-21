@@ -37,7 +37,7 @@ jobs:
           AGENTSCOPE_API_KEY: ci
         run: |
           mkdir -p data
-          .venv/bin/python -m alembic -c alembic.ini upgrade head
+          ../../.venv/bin/python -m alembic -c alembic.ini upgrade head
         working-directory: apps/api
       - name: Quality checks
         run: npm run check
