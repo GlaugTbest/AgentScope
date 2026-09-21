@@ -44,6 +44,15 @@ def summarize_traces(session: Session, **kwargs):
     inputs, outputs = int(inputs or 0), int(outputs or 0)
     return {"total_traces": total, "success_rate": success / total if total else None, "average_latency_ms": latency, "total_input_tokens": inputs, "total_output_tokens": outputs, "total_tokens": inputs + outputs, "estimated_cost": cost_string(int(cost or 0)), "error_count": int(errors or 0), "failed_traces": total - int(success or 0)}
 
+
+def latency_percentiles(session: Session, **kwargs):
+    values = sorted(session.scalars(_filters(select(TraceModel.duration_ms), **kwargs)).all())
+    def percentile(value):
+        if not values: return None
+        index = max(0, min(len(values) - 1, round((len(values) - 1) * value)))
+        return values[index]
+    return {"sample_size": len(values), "p50_ms": percentile(.50), "p95_ms": percentile(.95), "p99_ms": percentile(.99)}
+
 def get_trace(session: Session, trace_id: str):
     trace = session.get(TraceModel, trace_id)
     if not trace: return None

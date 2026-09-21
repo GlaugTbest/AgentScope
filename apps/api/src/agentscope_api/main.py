@@ -16,7 +16,7 @@ from .models import AgentModel, AgentVersionModel, InstanceModel, ProjectModel, 
 from .schemas import AgentCreate, AgentVersionCreate, EventBatch, IngestBatch, InstanceCreate, ProjectCreate, TaskCreate
 from .services.events import EventConflict, get_execution, ingest_events, list_executions
 from .services.ingestion import BatchConflict, BatchInvalid, ingest_batch
-from .services.queries import get_trace, list_traces, summarize_traces
+from .services.queries import get_trace, latency_percentiles, list_traces, summarize_traces
 
 def create_app():
     settings=Settings.from_env(); engine=make_engine(settings.database_url); factory=sessionmaker(engine, expire_on_commit=False)
@@ -136,6 +136,9 @@ def create_app():
     @app.get("/v1/traces/summary", dependencies=protected)
     def summary(agent_name:str|None=None,status:Literal['success','error']|None=None,span_type:str|None=None,start_from:datetime|None=None,start_to:datetime|None=None, db:Session=Depends(session)):
         return summarize_traces(db,**filters(agent_name,status,span_type,start_from,start_to))
+    @app.get("/v1/metrics/latency", dependencies=protected)
+    def latency_metrics(agent_name:str|None=None,status:Literal['success','error']|None=None,span_type:str|None=None,start_from:datetime|None=None,start_to:datetime|None=None, db:Session=Depends(session)):
+        return latency_percentiles(db, **filters(agent_name,status,span_type,start_from,start_to))
     @app.get("/v1/traces", dependencies=protected)
     def traces(agent_name:str|None=None,status:Literal['success','error']|None=None,span_type:str|None=None,start_from:datetime|None=None,start_to:datetime|None=None,limit:int=25,offset:int=0,db:Session=Depends(session)):
         if not 1<=limit<=100 or offset<0: raise HTTPException(422,"invalid pagination")
