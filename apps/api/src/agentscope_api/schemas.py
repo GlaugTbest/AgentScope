@@ -1,7 +1,6 @@
 from datetime import datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Any, Literal
-from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
@@ -29,7 +28,7 @@ class ErrorInfo(StrictModel):
     stacktrace: str | None = Field(default=None, max_length=20000)
 
 class TraceInput(StrictModel):
-    trace_id: UUID
+    trace_id: str = Field(min_length=1, max_length=200)
     agent_name: str = Field(min_length=1, max_length=200)
     start_time: datetime
     end_time: datetime
@@ -44,9 +43,9 @@ class TraceInput(StrictModel):
         return value
 
 class SpanInput(StrictModel):
-    span_id: UUID
-    trace_id: UUID
-    parent_span_id: UUID | None = None
+    span_id: str = Field(min_length=1, max_length=200)
+    trace_id: str = Field(min_length=1, max_length=200)
+    parent_span_id: str | None = Field(default=None, max_length=200)
     type: str = Field(min_length=1, max_length=64)
     name: str = Field(min_length=1, max_length=200)
     start_time: datetime

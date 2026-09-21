@@ -16,6 +16,7 @@ from .models import AgentModel, AgentVersionModel, InstanceModel, ProjectModel, 
 from .schemas import AgentCreate, AgentVersionCreate, EventBatch, IngestBatch, InstanceCreate, ProjectCreate, TaskCreate
 from .services.events import EventConflict, get_execution, ingest_events, list_executions
 from .services.ingestion import BatchConflict, BatchInvalid, ingest_batch
+from .services.otlp import batches as otlp_batches
 from .services.queries import get_trace, latency_percentiles, list_traces, summarize_traces
 
 def create_app():
@@ -120,6 +121,13 @@ def create_app():
         except BatchInvalid as exc: raise HTTPException(422,str(exc))
         except BatchConflict: raise HTTPException(409,"trace id already exists with different content")
         return JSONResponse({"trace_id":result.trace_id,"span_count":result.span_count,"created":result.created}, status_code=201 if result.created else 200)
+    @app.post("/v1/otlp/v1/traces", dependencies=protected)
+    def otlp_traces(payload: dict, db: Session=Depends(session)):
+        results = []
+        try:
+            for batch in otlp_batches(payload): results.append(ingest_batch(db, batch))
+        except (BatchConflict, BatchInvalid) as exc: raise HTTPException(422, str(exc))
+        return {"accepted": len(results), "traces": [result.trace_id for result in results]}
     @app.post("/v1/events", dependencies=protected)
     def events(batch: EventBatch, db: Session=Depends(session)):
         try: result = ingest_events(db, batch)
