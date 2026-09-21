@@ -1,0 +1,12 @@
+[
+  {"id": "DOC-01", "text": "AgentScope registra traces, spans, tokens, duração e eventos incrementais."},
+  {"id": "DOC-02", "text": "A captura de conteúdo é opcional e deve ser ativada explicitamente pela aplicação."},
+  {"id": "DOC-03", "text": "Campos como token, authorization, password e secret são sanitizados antes da exportação."},
+  {"id": "DOC-04", "text": "Retenção remove traces antigos e seus spans associados conforme a política do operador."},
+  {"id": "DOC-05", "text": "Uma execução aberta continua disponível mesmo quando ainda não possui resultado final."},
+  {"id": "DOC-06", "text": "Eventos idempotentes impedem que reenvios confirmados dupliquem atividade ou uso."},
+  {"id": "DOC-07", "text": "O dashboard apresenta percentis de latência p50, p95 e p99 a partir dos dados observados."},
+  {"id": "DOC-08", "text": "Ollama roda no loopback local e não exige uma chamada para uma API paga."},
+  {"id": "DOC-09", "text": "Delegações ligam a execução que encaminha trabalho à execução que o recebe."},
+  {"id": "DOC-10", "text": "Exportações sanitizadas mantêm dados estruturados úteis sem publicar credenciais."}
+]

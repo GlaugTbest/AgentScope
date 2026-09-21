@@ -26,3 +26,7 @@ with scope.trace('my-agent') as trace:
 ```
 
 `capture_content=True` habilita input/output. Metadata e erros podem conter dados sensíveis; evite registrar credenciais. A chave padrão é `dev` e todas as rotas `/v1/*` exigem Bearer authentication. SQLite é local, monousuário e não é indicado para alta concorrência.
+
+## Aplicações de referência
+
+Há três aplicações locais executáveis: RAG, colaboração entre pesquisador/redator/revisor e análise de dados SQLite. Veja [o guia dos exemplos](examples/reference-apps/README.md) e execute `npm run demo:rag`, `npm run demo:collaboration` ou `npm run demo:data` após iniciar o produto e o Ollama local.
