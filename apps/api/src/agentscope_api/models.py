@@ -21,6 +21,47 @@ class ProjectModel(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
 
 
+class AgentVersionModel(Base):
+    __tablename__ = "agent_versions"
+    agent_version_id: Mapped[str] = mapped_column(String(200), primary_key=True)
+    agent_id: Mapped[str] = mapped_column(ForeignKey("agents.agent_id"), nullable=False)
+    project_id: Mapped[str] = mapped_column(ForeignKey("projects.project_id"), nullable=False)
+    reference: Mapped[Any] = mapped_column(String(500), nullable=True)
+    metadata_: Mapped[Any] = mapped_column("metadata", JSON, default=dict, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+
+
+class InstanceModel(Base):
+    __tablename__ = "agent_instances"
+    instance_id: Mapped[str] = mapped_column(String(200), primary_key=True)
+    project_id: Mapped[str] = mapped_column(ForeignKey("projects.project_id"), nullable=False)
+    agent_id: Mapped[Any] = mapped_column(String(200), nullable=True)
+    agent_version_id: Mapped[Any] = mapped_column(ForeignKey("agent_versions.agent_version_id"), nullable=True)
+    runtime: Mapped[Any] = mapped_column(String(200), nullable=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    metadata_: Mapped[Any] = mapped_column("metadata", JSON, default=dict, nullable=False)
+
+
+class TaskModel(Base):
+    __tablename__ = "tasks"
+    task_id: Mapped[str] = mapped_column(String(200), primary_key=True)
+    project_id: Mapped[str] = mapped_column(ForeignKey("projects.project_id"), nullable=False)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    state: Mapped[str] = mapped_column(String(32), default="created", nullable=False)
+    metadata_: Mapped[Any] = mapped_column("metadata", JSON, default=dict, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+
+
+class DelegationModel(Base):
+    __tablename__ = "delegations"
+    delegation_id: Mapped[str] = mapped_column(String(200), primary_key=True)
+    task_id: Mapped[Any] = mapped_column(ForeignKey("tasks.task_id"), nullable=True)
+    source_execution_id: Mapped[str] = mapped_column(ForeignKey("executions.execution_id"), nullable=False)
+    target_execution_id: Mapped[str] = mapped_column(ForeignKey("executions.execution_id"), nullable=False)
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    metadata_: Mapped[Any] = mapped_column("metadata", JSON, default=dict, nullable=False)
+
+
 class ExecutionModel(Base):
     __tablename__ = "executions"
     execution_id: Mapped[str] = mapped_column(String(200), primary_key=True)
@@ -51,6 +92,10 @@ class ActivityEventModel(Base):
 Index("ix_executions_project_state", ExecutionModel.project_id, ExecutionModel.state)
 Index("ix_executions_agent_last_event", ExecutionModel.agent_name, ExecutionModel.last_event_at)
 Index("ix_activity_events_execution_time", ActivityEventModel.execution_id, ActivityEventModel.occurred_at)
+Index("ix_agent_versions_project_agent", AgentVersionModel.project_id, AgentVersionModel.agent_id)
+Index("ix_instances_project_agent", InstanceModel.project_id, InstanceModel.agent_id)
+Index("ix_tasks_project_created", TaskModel.project_id, TaskModel.created_at)
+Index("ix_delegations_task_time", DelegationModel.task_id, DelegationModel.occurred_at)
 
 
 class TraceModel(Base):

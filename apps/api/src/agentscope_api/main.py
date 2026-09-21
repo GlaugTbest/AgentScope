@@ -12,8 +12,8 @@ from sqlalchemy.orm import Session, sessionmaker
 from .auth import require_key
 from .config import Settings
 from .db import make_engine, session_dependency
-from .models import AgentModel, ProjectModel
-from .schemas import AgentCreate, EventBatch, IngestBatch, ProjectCreate
+from .models import AgentModel, AgentVersionModel, InstanceModel, ProjectModel, TaskModel
+from .schemas import AgentCreate, AgentVersionCreate, EventBatch, IngestBatch, InstanceCreate, ProjectCreate, TaskCreate
 from .services.events import EventConflict, get_execution, ingest_events, list_executions
 from .services.ingestion import BatchConflict, BatchInvalid, ingest_batch
 from .services.queries import get_trace, list_traces, summarize_traces
@@ -43,6 +43,37 @@ def create_app():
         except IntegrityError:
             db.rollback(); raise HTTPException(409, "project id or name already exists")
         return JSONResponse({"project_id": item.project_id, "name": item.name, "description": item.description, "created_at": item.created_at.isoformat()}, status_code=201)
+    @app.get("/v1/agent-versions", dependencies=protected)
+    def agent_versions(project_id: str, db: Session=Depends(session)):
+        items = db.query(AgentVersionModel).filter(AgentVersionModel.project_id == project_id).order_by(AgentVersionModel.created_at.desc()).all()
+        return {"items": [{"agent_version_id": item.agent_version_id, "agent_id": item.agent_id, "project_id": item.project_id, "reference": item.reference, "metadata": item.metadata_, "created_at": item.created_at.isoformat()} for item in items]}
+    @app.post("/v1/agent-versions", dependencies=protected)
+    def create_agent_version(version: AgentVersionCreate, db: Session=Depends(session)):
+        item = AgentVersionModel(agent_version_id=version.agent_version_id, agent_id=version.agent_id, project_id=version.project_id, reference=version.reference, metadata_=version.metadata); db.add(item)
+        try: db.commit()
+        except IntegrityError: db.rollback(); raise HTTPException(409, "agent version, project, or agent is invalid")
+        return JSONResponse({"agent_version_id": item.agent_version_id, "agent_id": item.agent_id, "project_id": item.project_id, "reference": item.reference, "metadata": item.metadata_}, status_code=201)
+    @app.get("/v1/instances", dependencies=protected)
+    def instances(project_id: str, db: Session=Depends(session)):
+        items = db.query(InstanceModel).filter(InstanceModel.project_id == project_id).order_by(InstanceModel.started_at.desc()).all()
+        return {"items": [{"instance_id": item.instance_id, "agent_id": item.agent_id, "agent_version_id": item.agent_version_id, "runtime": item.runtime, "started_at": item.started_at.isoformat(), "metadata": item.metadata_} for item in items]}
+    @app.post("/v1/instances", dependencies=protected)
+    def create_instance(instance: InstanceCreate, db: Session=Depends(session)):
+        item = InstanceModel(instance_id=instance.instance_id, project_id=instance.project_id, agent_id=instance.agent_id, agent_version_id=instance.agent_version_id, runtime=instance.runtime, metadata_=instance.metadata); db.add(item)
+        try: db.commit()
+        except IntegrityError: db.rollback(); raise HTTPException(409, "instance, project, or agent version is invalid")
+        return JSONResponse({"instance_id": item.instance_id, "project_id": item.project_id, "runtime": item.runtime, "metadata": item.metadata_}, status_code=201)
+    @app.get("/v1/tasks", dependencies=protected)
+    def tasks(project_id: str, limit: int = 25, offset: int = 0, db: Session=Depends(session)):
+        if not 1 <= limit <= 100 or offset < 0: raise HTTPException(422, "invalid pagination")
+        query = db.query(TaskModel).filter(TaskModel.project_id == project_id).order_by(TaskModel.created_at.desc())
+        return {"items": [{"task_id": item.task_id, "project_id": item.project_id, "title": item.title, "state": item.state, "metadata": item.metadata_, "created_at": item.created_at.isoformat()} for item in query.limit(limit).offset(offset)], "total": query.count(), "limit": limit, "offset": offset}
+    @app.post("/v1/tasks", dependencies=protected)
+    def create_task(task: TaskCreate, db: Session=Depends(session)):
+        item = TaskModel(task_id=task.task_id, project_id=task.project_id, title=task.title, metadata_=task.metadata); db.add(item)
+        try: db.commit()
+        except IntegrityError: db.rollback(); raise HTTPException(409, "task id or project is invalid")
+        return JSONResponse({"task_id": item.task_id, "project_id": item.project_id, "title": item.title, "state": item.state, "metadata": item.metadata_}, status_code=201)
     @app.get("/v1/agents", dependencies=protected)
     def agents(db: Session=Depends(session)):
         items = db.query(AgentModel).order_by(AgentModel.created_at.desc()).all()

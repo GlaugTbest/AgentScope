@@ -114,3 +114,27 @@ class ProjectCreate(StrictModel):
     project_id: str = Field(min_length=1, max_length=200, pattern=r"^[a-zA-Z0-9_.-]+$")
     name: str = Field(min_length=1, max_length=200)
     description: str | None = Field(default=None, max_length=500)
+
+
+class AgentVersionCreate(StrictModel):
+    agent_version_id: str = Field(min_length=1, max_length=200)
+    agent_id: str = Field(min_length=1, max_length=200)
+    project_id: str = Field(min_length=1, max_length=200)
+    reference: str | None = Field(default=None, max_length=500)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class InstanceCreate(StrictModel):
+    instance_id: str = Field(min_length=1, max_length=200)
+    project_id: str = Field(min_length=1, max_length=200)
+    agent_id: str | None = Field(default=None, max_length=200)
+    agent_version_id: str | None = Field(default=None, max_length=200)
+    runtime: str | None = Field(default=None, max_length=200)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class TaskCreate(StrictModel):
+    task_id: str = Field(min_length=1, max_length=200)
+    project_id: str = Field(min_length=1, max_length=200)
+    title: str = Field(min_length=1, max_length=500)
+    metadata: dict[str, Any] = Field(default_factory=dict)
