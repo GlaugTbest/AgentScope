@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.0.0 — unreleased
+## 1.0.0 — 2026-09-20
 
 - Local observability API, Python and TypeScript SDKs, dashboard, OTLP/HTTP trace intake and optional PostgreSQL Compose.
 - Project, agent version, instance, task, delegation, paginated history, quality evaluation and experiment APIs.
