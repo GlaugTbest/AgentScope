@@ -17,6 +17,7 @@ from .schemas import AgentCreate, AgentVersionCreate, EventBatch, IngestBatch, I
 from .services.events import EventConflict, get_execution, ingest_events, list_executions
 from .services.ingestion import BatchConflict, BatchInvalid, ingest_batch
 from .services.otlp import batches as otlp_batches
+from .services.operations import export_trace, prune_traces
 from .services.queries import get_trace, latency_percentiles, list_traces, summarize_traces
 
 def create_app():
@@ -156,6 +157,15 @@ def create_app():
         result=get_trace(db,trace_id)
         if not result: raise HTTPException(404,"trace not found")
         return result
+    @app.get("/v1/traces/{trace_id}/export", dependencies=protected)
+    def export(trace_id:str, db:Session=Depends(session)):
+        result = export_trace(db, trace_id)
+        if not result: raise HTTPException(404, "trace not found")
+        return result
+    @app.delete("/v1/operations/retention", dependencies=protected)
+    def retention(before: datetime, db: Session=Depends(session)):
+        if before.tzinfo is None: raise HTTPException(422, "retention date requires timezone")
+        return prune_traces(db, before.astimezone(UTC).replace(tzinfo=None))
     return app
 
 app=create_app()
