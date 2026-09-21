@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Any
-from sqlalchemy import DateTime, ForeignKey, Index, Integer, JSON, String
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Index, Integer, JSON, String
 from sqlalchemy.orm import Mapped, mapped_column
 from .db import Base
 
@@ -62,6 +62,41 @@ class DelegationModel(Base):
     metadata_: Mapped[Any] = mapped_column("metadata", JSON, default=dict, nullable=False)
 
 
+class PriceCatalogModel(Base):
+    __tablename__ = "price_catalogs"
+    catalog_id: Mapped[str] = mapped_column(String(200), primary_key=True)
+    model: Mapped[str] = mapped_column(String(200), nullable=False)
+    provider: Mapped[str] = mapped_column(String(200), nullable=False)
+    input_per_million_nano_usd: Mapped[int] = mapped_column(Integer, nullable=False)
+    output_per_million_nano_usd: Mapped[int] = mapped_column(Integer, nullable=False)
+    simulated: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+
+
+class EvaluationModel(Base):
+    __tablename__ = "evaluations"
+    evaluation_id: Mapped[str] = mapped_column(String(200), primary_key=True)
+    project_id: Mapped[str] = mapped_column(ForeignKey("projects.project_id"), nullable=False)
+    task_id: Mapped[Any] = mapped_column(ForeignKey("tasks.task_id"), nullable=True)
+    agent_version_id: Mapped[Any] = mapped_column(ForeignKey("agent_versions.agent_version_id"), nullable=True)
+    criterion: Mapped[str] = mapped_column(String(200), nullable=False)
+    score: Mapped[float] = mapped_column(Float, nullable=False)
+    passed: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    evidence: Mapped[Any] = mapped_column(JSON, default=dict, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+
+
+class ExperimentModel(Base):
+    __tablename__ = "experiments"
+    experiment_id: Mapped[str] = mapped_column(String(200), primary_key=True)
+    project_id: Mapped[str] = mapped_column(ForeignKey("projects.project_id"), nullable=False)
+    baseline_version_id: Mapped[str] = mapped_column(ForeignKey("agent_versions.agent_version_id"), nullable=False)
+    variant_version_id: Mapped[str] = mapped_column(ForeignKey("agent_versions.agent_version_id"), nullable=False)
+    baseline: Mapped[Any] = mapped_column(JSON, nullable=False)
+    variant: Mapped[Any] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+
+
 class ExecutionModel(Base):
     __tablename__ = "executions"
     execution_id: Mapped[str] = mapped_column(String(200), primary_key=True)
@@ -96,6 +131,8 @@ Index("ix_agent_versions_project_agent", AgentVersionModel.project_id, AgentVers
 Index("ix_instances_project_agent", InstanceModel.project_id, InstanceModel.agent_id)
 Index("ix_tasks_project_created", TaskModel.project_id, TaskModel.created_at)
 Index("ix_delegations_task_time", DelegationModel.task_id, DelegationModel.occurred_at)
+Index("ix_evaluations_project_created", EvaluationModel.project_id, EvaluationModel.created_at)
+Index("ix_experiments_project_created", ExperimentModel.project_id, ExperimentModel.created_at)
 
 
 class TraceModel(Base):

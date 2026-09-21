@@ -12,8 +12,9 @@ from sqlalchemy.orm import Session, sessionmaker
 from .auth import require_key
 from .config import Settings
 from .db import make_engine, session_dependency
-from .models import AgentModel, AgentVersionModel, DelegationModel, InstanceModel, ProjectModel, TaskModel
-from .schemas import AgentCreate, AgentVersionCreate, DelegationCreate, EventBatch, IngestBatch, InstanceCreate, ProjectCreate, TaskCreate
+from .models import AgentModel, AgentVersionModel, DelegationModel, EvaluationModel, ExperimentModel, InstanceModel, PriceCatalogModel, ProjectModel, TaskModel
+from .schemas import AgentCreate, AgentVersionCreate, DelegationCreate, EvaluationCreate, EventBatch, ExperimentCreate, IngestBatch, InstanceCreate, PriceCatalogCreate, ProjectCreate, TaskCreate
+from .services.efficiency import analyze_experiment, estimate_price
 from .services.events import EventConflict, get_execution, ingest_events, list_executions
 from .services.ingestion import BatchConflict, BatchInvalid, ingest_batch
 from .services.otlp import batches as otlp_batches
@@ -90,6 +91,45 @@ def create_app():
         try: db.commit()
         except IntegrityError: db.rollback(); raise HTTPException(409, "delegation id, task, or execution is invalid")
         return JSONResponse({"delegation_id": item.delegation_id, "task_id": item.task_id, "source_execution_id": item.source_execution_id, "target_execution_id": item.target_execution_id, "occurred_at": item.occurred_at.isoformat() + "Z", "metadata": item.metadata_}, status_code=201)
+    @app.get("/v1/prices", dependencies=protected)
+    def prices(db: Session = Depends(session)):
+        items = db.query(PriceCatalogModel).order_by(PriceCatalogModel.created_at.desc()).all()
+        return {"items": [{"catalog_id": item.catalog_id, "model": item.model, "provider": item.provider, "input_per_million_nano_usd": item.input_per_million_nano_usd, "output_per_million_nano_usd": item.output_per_million_nano_usd, "simulated": item.simulated} for item in items]}
+    @app.post("/v1/prices", dependencies=protected)
+    def create_price(price: PriceCatalogCreate, db: Session = Depends(session)):
+        item = PriceCatalogModel(**price.model_dump()); db.add(item)
+        try: db.commit()
+        except IntegrityError: db.rollback(); raise HTTPException(409, "catalog id already exists")
+        return JSONResponse({"catalog_id": item.catalog_id, "simulated": item.simulated}, status_code=201)
+    @app.get("/v1/prices/{catalog_id}/estimate", dependencies=protected)
+    def price_estimate(catalog_id: str, input_tokens: int = 0, output_tokens: int = 0, db: Session = Depends(session)):
+        if input_tokens < 0 or output_tokens < 0: raise HTTPException(422, "token counts cannot be negative")
+        item = db.get(PriceCatalogModel, catalog_id)
+        if not item: raise HTTPException(404, "price catalog not found")
+        return estimate_price(item, input_tokens, output_tokens)
+    @app.get("/v1/evaluations", dependencies=protected)
+    def evaluations(project_id: str, limit: int = 25, offset: int = 0, db: Session = Depends(session)):
+        if not 1 <= limit <= 100 or offset < 0: raise HTTPException(422, "invalid pagination")
+        query = db.query(EvaluationModel).filter(EvaluationModel.project_id == project_id).order_by(EvaluationModel.created_at.desc())
+        return {"items": [{"evaluation_id": item.evaluation_id, "task_id": item.task_id, "agent_version_id": item.agent_version_id, "criterion": item.criterion, "score": item.score, "passed": item.passed, "evidence": item.evidence, "created_at": item.created_at.isoformat() + "Z"} for item in query.limit(limit).offset(offset)], "total": query.count(), "limit": limit, "offset": offset}
+    @app.post("/v1/evaluations", dependencies=protected)
+    def create_evaluation(evaluation: EvaluationCreate, db: Session = Depends(session)):
+        item = EvaluationModel(**evaluation.model_dump()); db.add(item)
+        try: db.commit()
+        except IntegrityError: db.rollback(); raise HTTPException(409, "evaluation id or referenced domain entity is invalid")
+        return JSONResponse({"evaluation_id": item.evaluation_id, "score": item.score, "passed": item.passed, "evidence": item.evidence}, status_code=201)
+    @app.post("/v1/experiments", dependencies=protected)
+    def create_experiment(experiment: ExperimentCreate, db: Session = Depends(session)):
+        payload = experiment.model_dump()
+        item = ExperimentModel(**payload); db.add(item)
+        try: db.commit()
+        except IntegrityError: db.rollback(); raise HTTPException(409, "experiment id or referenced agent version is invalid")
+        return JSONResponse(analyze_experiment(item), status_code=201)
+    @app.get("/v1/experiments/{experiment_id}", dependencies=protected)
+    def experiment(experiment_id: str, db: Session = Depends(session)):
+        item = db.get(ExperimentModel, experiment_id)
+        if not item: raise HTTPException(404, "experiment not found")
+        return analyze_experiment(item)
     @app.get("/v1/agents", dependencies=protected)
     def agents(db: Session=Depends(session)):
         items = db.query(AgentModel).order_by(AgentModel.created_at.desc()).all()

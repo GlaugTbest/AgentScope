@@ -147,3 +147,39 @@ class DelegationCreate(StrictModel):
     occurred_at: datetime
     metadata: dict[str, Any] = Field(default_factory=dict)
     _timestamp = field_validator("occurred_at")(utc)
+
+
+class PriceCatalogCreate(StrictModel):
+    catalog_id: str = Field(min_length=1, max_length=200)
+    model: str = Field(min_length=1, max_length=200)
+    provider: str = Field(min_length=1, max_length=200)
+    input_per_million_nano_usd: int = Field(ge=0)
+    output_per_million_nano_usd: int = Field(ge=0)
+    simulated: Literal[True] = True
+
+
+class EvaluationCreate(StrictModel):
+    evaluation_id: str = Field(min_length=1, max_length=200)
+    project_id: str = Field(min_length=1, max_length=200)
+    task_id: str | None = Field(default=None, max_length=200)
+    agent_version_id: str | None = Field(default=None, max_length=200)
+    criterion: str = Field(min_length=1, max_length=200)
+    score: float = Field(ge=0, le=1)
+    passed: bool
+    evidence: dict[str, Any] = Field(default_factory=dict)
+
+
+class MetricSample(StrictModel):
+    quality: float = Field(ge=0, le=1)
+    input_tokens: int = Field(ge=0)
+    output_tokens: int = Field(ge=0)
+    latency_ms: int = Field(ge=0)
+
+
+class ExperimentCreate(StrictModel):
+    experiment_id: str = Field(min_length=1, max_length=200)
+    project_id: str = Field(min_length=1, max_length=200)
+    baseline_version_id: str = Field(min_length=1, max_length=200)
+    variant_version_id: str = Field(min_length=1, max_length=200)
+    baseline: list[MetricSample] = Field(min_length=1, max_length=1000)
+    variant: list[MetricSample] = Field(min_length=1, max_length=1000)
