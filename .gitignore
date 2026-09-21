@@ -17,3 +17,5 @@ data/*.log
 data/web-*
 playwright-report/
 test-results/
+
+packages/sdk-typescript/dist/
